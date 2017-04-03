@@ -1,61 +1,65 @@
 # umb_db
 
+<html>
+<pre>
 package umb_db
-import "github.com/nikonor/umb_db"
-
-    TYPES
-
-    type MyDB struct {
-        DB *sql.DB
-        TX *sql.Tx
-    }
+    import "github.com/nikonor/umb_db"
 
 
 
 FUNCTIONS
 
-    func Connect2db(C map[string]string) (*sql.DB, error)
+func Connect2db(C map[string]string) (*sql.DB, error)
     соединяемся с базой (для многопоточности стоит иметь много соединений, а
     не одно)
 
-    func German2ISO(v string) string
+func German2ISO(v string) string
     перевод даты из German в ISO-8601
 
-    func ISO2German(v string) string
+func ISO2German(v string) string
     перевод даты из ISO-8601 в German
 
 
+TYPES
 
-    func BeginDB(C map[string]string) (MyDB, error)
+type MyDB struct {
+    DB *sql.DB
+    TX *sql.Tx
+}
+
+
+func BeginDB(C map[string]string) (MyDB, error)
     создаем объект DB по конфугу
 
 
-    func (m MyDB) BeginTX() (MyDB, error)
+func (m MyDB) BeginTX() (MyDB, error)
 
-    func (m MyDB) CloseDB() error
+func (m MyDB) CloseDB() error
     закрываем соединения с базой
 
-    func (m MyDB) Commit() (MyDB, error)
+func (m MyDB) Commit() (MyDB, error)
 
-    func (m MyDB) Do2(q string, pars []interface{}, needId bool) (int64, error)
+func (m MyDB) Do2(q string, pars []interface{}, needId bool) (int64, error)
     q - "шаблон запроса", pars - массив значения для запроса, needId - true
     - если не нужно получать id, false, если нужно
 
-    func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error)
+func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error)
     получаем словарь значений
 
-    func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}, err error)
+func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}, err error)
     получаем набор словарей значений
 
-    func (m MyDB) IsTxOpen() bool
+func (m MyDB) IsTxOpen() bool
 
-    func (m MyDB) Rollback() (MyDB, error)
+func (m MyDB) Rollback() (MyDB, error)
 
-    func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error)
+func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error)
     получение набора значений
 
-    func (m MyDB) Row0(q string, pars []interface{}) (ret interface{}, err error)
+func (m MyDB) Row0(q string, pars []interface{}) (ret interface{}, err error)
     получение одного значения
 
-    func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error)
+func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error)
     получаем набор строк
+</pre>
+</html>
