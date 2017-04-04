@@ -110,7 +110,6 @@ func TestTwo(t *testing.T) {
 	}
 }
 
-
 func TestDo(t *testing.T) {
 	var err error
 	conf := readConf("")
@@ -125,28 +124,28 @@ func TestDo(t *testing.T) {
 
 	err = mdb.BeginTx()
 	if err != nil {
-		t.Errorf("Error on TestDo::BeginTx. %s\n",err)
+		t.Errorf("Error on TestDo::BeginTx. %s\n", err)
 	}
 	// defer mdb.Rollback()
 
-	_,err = mdb.Do("insert into test (id,name) values($1,$2)",[]interface{}{5,"six"},false)
+	_, err = mdb.Do("insert into test (id,name) values($1,$2)", []interface{}{5, "six"}, false)
 	if err != nil {
 		// mdb.Rollback();
-		t.Errorf("Error on TestDo::Do. %s\n",err)
+		t.Errorf("Error on TestDo::Do. %s\n", err)
 	}
 	// mdb.Commit();
 
-	fmt.Printf("IsTxOpen=%b!\n",mdb.IsTxOpen());
+	fmt.Printf("IsTxOpen=%b!\n", mdb.IsTxOpen())
 	sel := "select name from test where id=$1"
 	got, err := mdb.Row0(sel, []interface{}{5})
-	fmt.Printf("1::Row0=%s\n",got);
+	fmt.Printf("1::Row0=%s\n", got)
 	if got != "six" || err != nil {
 		t.Errorf("Error on TestDo::Row0: %s\n\tgot=%s\n", err, got)
 	}
 
 	sel = "select name from test where id>=$1 and id<=5 order by id"
 	got2, err2 := mdb.Hashes(sel, []interface{}{4})
-	fmt.Printf("2::Row0=%s\n",got2[1]["name"]);
+	fmt.Printf("2::Row0=%s\n", got2[1]["name"])
 	if got2[1]["name"] != "six" || err2 != nil {
 		t.Errorf("Error on TestDo::Row0: %s\n\tgot2=%s\n", err2, got2)
 	}

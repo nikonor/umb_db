@@ -39,7 +39,7 @@ func (m *MyDB) CloseDB() error {
 	return nil
 }
 
-func (m *MyDB) BeginTx() (error) {
+func (m *MyDB) BeginTx() error {
 	var err error
 	m.TX, err = m.DB.Begin()
 	if err != nil {
@@ -48,7 +48,7 @@ func (m *MyDB) BeginTx() (error) {
 	return nil
 }
 
-func (m *MyDB) Commit() (error) {
+func (m *MyDB) Commit() error {
 	if err := m.TX.Commit(); err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (m *MyDB) Commit() (error) {
 	return nil
 }
 
-func (m *MyDB) Rollback() (error) {
+func (m *MyDB) Rollback() error {
 	if err := m.TX.Rollback(); err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (m MyDB) Row0(q string, pars []interface{}) (ret interface{}, err error) {
 
 	pars = preparePars(pars)
 	if m.IsTxOpen() {
-		err = m.TX.QueryRow(q, pars...).Scan(&ret)	
+		err = m.TX.QueryRow(q, pars...).Scan(&ret)
 	} else {
 		err = m.DB.QueryRow(q, pars...).Scan(&ret)
 	}
@@ -119,12 +119,11 @@ func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error) {
 	return ret, nil
 }
 
-
 //получаем словарь значений
 func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error) {
 	var (
 		rows *sql.Rows
-		err error
+		err  error
 	)
 	ret := map[string]interface{}{}
 	pars = preparePars(pars)
@@ -226,7 +225,7 @@ func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}
 
 	if m.IsTxOpen() {
 		rows, err = m.TX.Query(q, pars...)
-	}else {
+	} else {
 		rows, err = m.DB.Query(q, pars...)
 	}
 	if err != nil {
@@ -278,8 +277,8 @@ func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error) {
 	if m.IsTxOpen() != true {
 		return -1, errors.New("Tx is not open")
 	} else {
-		tx_id,_ := m.Row0("select txid_current()",[]interface{}{})
-		fmt.Printf("TX in DO=%d\n",tx_id);
+		tx_id, _ := m.Row0("select txid_current()", []interface{}{})
+		fmt.Printf("TX in DO=%d\n", tx_id)
 	}
 
 	pars = preparePars(pars)
