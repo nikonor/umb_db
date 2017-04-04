@@ -61,8 +61,90 @@ func TestOne(t *testing.T) {
 	}
 }
 
-func TestDo(t *testing.T) {
+func TestTwo(t *testing.T) {
+	conf := readConf("")
+	mdb, err := BeginDB(map[string]string{"HOST": conf["HOST"], "DBNAME": conf["DBNAME"], "DBUSER": conf["DBUSER"], "DBPASSWD": conf["DBPASSWD"], "PORT": conf["PORT"]})
+	if err != nil {
+		t.Errorf("Error on BeginDB: %s\n", err)
+	}
+	defer mdb.CloseDB()
 
+	mdb.BeginTx()
+	if err != nil {
+		t.Errorf("Error on BeginTx: %s\n", err)
+	}
+	// defer mdb.Rollback()
+
+	sel := "select name from test where id=$1"
+	got, err := mdb.Row0(sel, []interface{}{0})
+	if got != "one" || err != nil {
+		t.Errorf("Error on Row0: %s\n\tgot=%s\n", err, got)
+	}
+
+	sel = "select id,name from test where id=$1"
+	got2, err := mdb.Row(sel, []interface{}{1})
+	fmt.Printf("got2 %#v\n", got2)
+	if got2[0].(int64) != 1 || got2[1].(string) != "two" || err != nil {
+		t.Errorf("Error on Row: %s\n\tgot=%#v\n", err, got2)
+	}
+
+	sel = "select id,name from test where id<=$1 order by id"
+	got3, err := mdb.Rows(sel, []interface{}{1})
+	fmt.Printf("got3 %#v\n", got3)
+	if got3[1][0].(int64) != 1 || got3[1][1].(string) != "two" || err != nil {
+		t.Errorf("Error on Rows: %s\n\tgot=%#v\n", err, got3)
+	}
+
+	sel = "select id,name from test where id=$1"
+	got4, err := mdb.Hash(sel, []interface{}{1})
+	fmt.Printf("got4 %#v\n", got4)
+	if got4["id"].(int64) != 1 || got4["name"].(string) != "two" || err != nil {
+		t.Errorf("Error on Row: %s\n\tgot=%#v\n", err, got4)
+	}
+
+	sel = "select id,name from test where id<=$1 order by id"
+	got5, err := mdb.Hashes(sel, []interface{}{1})
+	fmt.Printf("got5 %#v\n", got5)
+	if got5[1]["id"].(int64) != 1 || got5[1]["name"].(string) != "two" || err != nil {
+		t.Errorf("Error on Rows: %s\n\tgot=%#v\n", err, got5)
+	}
+}
+
+
+func TestDo(t *testing.T) {
+	var err error
+	conf := readConf("")
+	mdb, err := BeginDB(map[string]string{"HOST": conf["HOST"], "DBNAME": conf["DBNAME"], "DBUSER": conf["DBUSER"], "DBPASSWD": conf["DBPASSWD"], "PORT": conf["PORT"]})
+	defer mdb.CloseDB()
+
+	// new_id, err := mdb.Row0("select nextval('s_test')",[]interface{}{})
+	// if err != nil {
+	// 	t.Errorf("Error on TestDo::nextval")
+	// }
+	// fmt.Printf("new_id=%d\n",new_id);
+
+	err = mdb.BeginTx()
+	if err != nil {
+		t.Errorf("Error on TestDo::BeginTx. %s\n",err)
+	}
+	// defer mdb.Rollback()
+
+	_,err = mdb.Do("insert into test (id,name) values($1,$2)",[]interface{}{5,"six"},false)
+	if err != nil {
+		// mdb.Rollback();
+		t.Errorf("Error on TestDo::Do. %s\n",err)
+	}
+	// mdb.Commit();
+
+	fmt.Printf("IsTxOpen=%b!\n",mdb.IsTxOpen());
+	sel := "select name from test where id=$1"
+	got, err := mdb.Row0(sel, []interface{}{5})
+	fmt.Printf("Row0=%s\n",got);
+	if got != "six" || err != nil {
+		t.Errorf("Error on TestDo::Row0: %s\n\tgot=%s\n", err, got)
+	}
+
+	mdb.Rollback()
 }
 
 // читаем конфиг. По умолчанию default_filename

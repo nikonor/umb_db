@@ -31,52 +31,62 @@ func Connect2db(C map[string]string) (*sql.DB, error) {
 }
 
 //закрываем соединения с базой
-func (m MyDB) CloseDB() error {
+func (m *MyDB) CloseDB() error {
 	if err := m.DB.Close(); err != nil {
+		return err
+	}
+	m.TX = nil
+	return nil
+}
+
+func (m *MyDB) BeginTx() (error) {
+	var err error
+	m.TX, err = m.DB.Begin()
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m MyDB) BeginTX() (MyDB, error) {
-	var err error
-
-	m.TX, err = m.DB.Begin()
-	if err != nil {
-		return m, err
-	}
-	return m, nil
-}
-
-func (m MyDB) Commit() (MyDB, error) {
+func (m *MyDB) Commit() (error) {
 	if err := m.TX.Commit(); err != nil {
-		return m, err
+		return err
 	}
 	m.TX = nil
-	return m, nil
+	return nil
 }
 
-func (m MyDB) Rollback() (MyDB, error) {
+func (m *MyDB) Rollback() (error) {
 	if err := m.TX.Rollback(); err != nil {
-		return m, err
+		return err
 	}
 	m.TX = nil
-	return m, nil
+	return nil
 }
 
 //получение одного значения
 func (m MyDB) Row0(q string, pars []interface{}) (ret interface{}, err error) {
+
 	pars = preparePars(pars)
-	err = m.DB.QueryRow(q, pars...).Scan(&ret)
+	if m.IsTxOpen() {
+		err = m.TX.QueryRow(q, pars...).Scan(&ret)	
+	} else {
+		err = m.DB.QueryRow(q, pars...).Scan(&ret)
+	}
 	return ret, err
 }
 
 //получение набора значений
 func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error) {
+	var rows *sql.Rows
 
 	pars = preparePars(pars)
 
-	rows, err := m.DB.Query(q, pars...)
+	if m.IsTxOpen() {
+		rows, err = m.TX.Query(q, pars...)
+	} else {
+		rows, err = m.DB.Query(q, pars...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +103,7 @@ func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error) {
 	}
 
 	rows.Scan(valuePtrs...)
+	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	for i, _ := range columns {
 		var v interface{}
@@ -108,12 +119,67 @@ func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error) {
 	return ret, nil
 }
 
+
+//получаем словарь значений
+func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error) {
+	var (
+		rows *sql.Rows
+		err error
+	)
+	ret := map[string]interface{}{}
+	pars = preparePars(pars)
+
+	if m.IsTxOpen() {
+		rows, err = m.TX.Query(q, pars...)
+	} else {
+		rows, err = m.DB.Query(q, pars...)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	columns, _ := rows.Columns()
+	count := len(columns)
+	values := make([]interface{}, count)
+	valuePtrs := make([]interface{}, count)
+	columnsName := make([]string, count)
+
+	rows.Next()
+
+	for i, cn := range columns {
+		valuePtrs[i] = &values[i]
+		columnsName[i] = cn
+	}
+
+	rows.Scan(valuePtrs...)
+	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
+
+	for i, _ := range columns {
+		var v interface{}
+		val := values[i]
+		b, ok := val.([]byte)
+		if ok {
+			v = string(b)
+		} else {
+			v = val
+		}
+		// ret = append (ret, v)
+		ret[string(columnsName[i])] = v
+	}
+	return ret, nil
+}
+
 //получаем набор строк
 func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error) {
+	var rows *sql.Rows
 
 	pars = preparePars(pars)
 
-	rows, err := m.DB.Query(q, pars...)
+	if m.IsTxOpen() {
+		rows, err = m.TX.Query(q, pars...)
+	} else {
+		rows, err = m.DB.Query(q, pars...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -147,54 +213,22 @@ func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error
 		}
 		ret = append(ret, subret)
 	}
-	return ret, nil
-}
+	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
-//получаем словарь значений
-func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error) {
-	ret := map[string]interface{}{}
-	pars = preparePars(pars)
-
-	rows, err := m.DB.Query(q, pars...)
-	if err != nil {
-		return nil, err
-	}
-
-	columns, _ := rows.Columns()
-	count := len(columns)
-	values := make([]interface{}, count)
-	valuePtrs := make([]interface{}, count)
-	columnsName := make([]string, count)
-
-	rows.Next()
-
-	for i, cn := range columns {
-		valuePtrs[i] = &values[i]
-		columnsName[i] = cn
-	}
-
-	rows.Scan(valuePtrs...)
-
-	for i, _ := range columns {
-		var v interface{}
-		val := values[i]
-		b, ok := val.([]byte)
-		if ok {
-			v = string(b)
-		} else {
-			v = val
-		}
-		// ret = append (ret, v)
-		ret[string(columnsName[i])] = v
-	}
 	return ret, nil
 }
 
 //получаем набор словарей значений
 func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}, err error) {
+	var rows *sql.Rows
+
 	pars = preparePars(pars)
 
-	rows, err := m.DB.Query(q, pars...)
+	if m.IsTxOpen() {
+		rows, err = m.TX.Query(q, pars...)
+	}else {
+		rows, err = m.DB.Query(q, pars...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +263,8 @@ func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}
 		}
 		ret = append(ret, subret)
 	}
+	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
+
 	return ret, nil
 
 }
@@ -236,47 +272,36 @@ func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}
 // q - "шаблон запроса",
 // pars - массив значения для запроса,
 // needId - true - если не нужно получать id, false, если нужно
-func (m MyDB) Do2(q string, pars []interface{}, needId bool) (int64, error) {
+func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error) {
 	var new_id int64
 
 	if m.IsTxOpen() != true {
 		return -1, errors.New("Tx is not open")
+	} else {
+		tx_id,_ := m.Row0("select txid_current()",[]interface{}{})
+		fmt.Printf("TX in DO=%d\n",tx_id);
 	}
 
 	pars = preparePars(pars)
 
 	if strings.HasPrefix(strings.ToUpper(q), "INSERT") {
-		stmt1, err := m.TX.Prepare(q + " returning id")
+		stmt, err := m.TX.Prepare(q + " returning id")
 		if err != nil {
 			return -1, err
 		}
 
 		// выполняем первый запрос
-		res := stmt1.QueryRow(pars...)
+		res := stmt.QueryRow(pars...)
 
 		//  получаем ID, если это нужно
 
 		if needId == false {
-			var lastPar = len(pars)
-
-			// добавляем в запрос поле id и placeholder для него. Номер placeholder-а будет lastPar+1
-			q = strings.Replace(q, fmt.Sprintf("$%d", lastPar), fmt.Sprintf("$%d,$%d", lastPar, lastPar+1), -1)
-			q = strings.Replace(q, ") ", ",id) ", 1)
-
 			if err := res.Scan(&new_id); err != nil {
 				return -1, err
 			}
-			pars = append(pars, new_id)
+			// pars = append(pars, new_id)
 		} else {
 			new_id = 0
-		}
-
-		stmt2, err := m.TX.Prepare(q)
-		if err != nil {
-			return -1, err
-		}
-		if _, err := stmt2.Exec(pars...); err != nil {
-			return -1, err
 		}
 
 	} else {
@@ -302,27 +327,17 @@ func (m MyDB) Do2(q string, pars []interface{}, needId bool) (int64, error) {
 			q = fmt.Sprintf("update %s set del=1 %s", tbl, strings.Join(qq, " "))
 		} // DELETE
 
-		stmt1, err := m.TX.Prepare(q)
-		if err != nil {
-			return -1, err
-		}
-		stmt2, err := m.TX.Prepare(q)
+		stmt, err := m.TX.Prepare(q)
 		if err != nil {
 			return -1, err
 		}
 
 		if pars != nil {
-			if _, err := stmt1.Exec(pars...); err != nil {
-				return -1, err
-			}
-			if _, err := stmt2.Exec(pars...); err != nil {
+			if _, err := stmt.Exec(pars...); err != nil {
 				return -1, err
 			}
 		} else {
-			if _, err := stmt1.Exec(); err != nil {
-				return -1, err
-			}
-			if _, err := stmt2.Exec(); err != nil {
+			if _, err := stmt.Exec(); err != nil {
 				return -1, err
 			}
 		}
