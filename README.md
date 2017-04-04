@@ -9,14 +9,14 @@ package umb_db
 
 FUNCTIONS
 
->func Connect2db(C map[string]string) (*sql.DB, error)
+func Connect2db(C map[string]string) (*sql.DB, error)
     соединяемся с базой (для многопоточности стоит иметь много соединений, а
     не одно)
 
->func German2ISO(v string) string
+func German2ISO(v string) string
     перевод даты из German в ISO-8601
 
->func ISO2German(v string) string
+func ISO2German(v string) string
     перевод даты из ISO-8601 в German
 
 
