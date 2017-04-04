@@ -139,9 +139,16 @@ func TestDo(t *testing.T) {
 	fmt.Printf("IsTxOpen=%b!\n",mdb.IsTxOpen());
 	sel := "select name from test where id=$1"
 	got, err := mdb.Row0(sel, []interface{}{5})
-	fmt.Printf("Row0=%s\n",got);
+	fmt.Printf("1::Row0=%s\n",got);
 	if got != "six" || err != nil {
 		t.Errorf("Error on TestDo::Row0: %s\n\tgot=%s\n", err, got)
+	}
+
+	sel = "select name from test where id>=$1 and id<=5 order by id"
+	got2, err2 := mdb.Hashes(sel, []interface{}{4})
+	fmt.Printf("2::Row0=%s\n",got2[1]["name"]);
+	if got2[1]["name"] != "six" || err2 != nil {
+		t.Errorf("Error on TestDo::Row0: %s\n\tgot2=%s\n", err2, got2)
 	}
 
 	mdb.Rollback()
