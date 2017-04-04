@@ -1,7 +1,7 @@
 # umb_db
 
-<html>
-<pre>
+PACKAGE DOCUMENTATION
+
 package umb_db
     import "github.com/nikonor/umb_db"
 
@@ -32,14 +32,14 @@ func BeginDB(C map[string]string) (MyDB, error)
     создаем объект DB по конфугу
 
 
-func (m MyDB) BeginTX() (MyDB, error)
+func (m *MyDB) BeginTx() error
 
-func (m MyDB) CloseDB() error
+func (m *MyDB) CloseDB() error
     закрываем соединения с базой
 
-func (m MyDB) Commit() (MyDB, error)
+func (m *MyDB) Commit() error
 
-func (m MyDB) Do2(q string, pars []interface{}, needId bool) (int64, error)
+func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error)
     q - "шаблон запроса", pars - массив значения для запроса, needId - true
     - если не нужно получать id, false, если нужно
 
@@ -51,7 +51,7 @@ func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}
 
 func (m MyDB) IsTxOpen() bool
 
-func (m MyDB) Rollback() (MyDB, error)
+func (m *MyDB) Rollback() error
 
 func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error)
     получение набора значений
@@ -61,5 +61,3 @@ func (m MyDB) Row0(q string, pars []interface{}) (ret interface{}, err error)
 
 func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error)
     получаем набор строк
-</pre>
-</html>
