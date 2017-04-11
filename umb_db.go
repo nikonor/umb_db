@@ -25,7 +25,11 @@ func BeginDB(C map[string]string) (MyDB, error) {
 
 // соединяемся с базой (для многопоточности стоит иметь много соединений, а не одно)
 func Connect2db(C map[string]string) (*sql.DB, error) {
-	db_connect_string := "host=" + C["HOST"] + " dbname=" + C["DBNAME"] + " user=" + C["DBUSER"] + " password=" + C["DBPASSWD"] + " port=" + C["PORT"]
+
+	if C["SSLMODE"] == "" {
+		C["SSLMODE"] = "disable"
+	}
+	db_connect_string := "host=" + C["HOST"] + " dbname=" + C["DBNAME"] + " user=" + C["DBUSER"] + " password=" + C["DBPASSWD"] + " port=" + C["PORT"] + " sslmode=" + C["SSLMODE"]
 	fmt.Println(db_connect_string)
 	return sql.Open("postgres", db_connect_string)
 }
