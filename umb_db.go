@@ -30,7 +30,7 @@ func Connect2db(C map[string]string) (*sql.DB, error) {
 		C["SSLMODE"] = "disable"
 	}
 	db_connect_string := "host=" + C["HOST"] + " dbname=" + C["DBNAME"] + " user=" + C["DBUSER"] + " password=" + C["DBPASSWD"] + " port=" + C["PORT"] + " sslmode=" + C["SSLMODE"]
-	fmt.Println(db_connect_string)
+	// fmt.Println(db_connect_string)
 	return sql.Open("postgres", db_connect_string)
 }
 
@@ -298,7 +298,7 @@ func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error) {
 
 		//  получаем ID, если это нужно
 
-		if needId == false {
+		if needId == true {
 			if err := res.Scan(&new_id); err != nil {
 				return -1, err
 			}
