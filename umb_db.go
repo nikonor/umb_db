@@ -94,6 +94,7 @@ func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	columns, _ := rows.Columns()
 	count := len(columns)
@@ -107,7 +108,6 @@ func (m MyDB) Row(q string, pars []interface{}) (ret []interface{}, err error) {
 	}
 
 	rows.Scan(valuePtrs...)
-	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	for i, _ := range columns {
 		var v interface{}
@@ -140,6 +140,7 @@ func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	columns, _ := rows.Columns()
 	count := len(columns)
@@ -155,7 +156,6 @@ func (m MyDB) Hash(q string, pars []interface{}) (map[string]interface{}, error)
 	}
 
 	rows.Scan(valuePtrs...)
-	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	for i, _ := range columns {
 		var v interface{}
@@ -186,6 +186,7 @@ func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	columns, _ := rows.Columns()
 	count := len(columns)
@@ -216,7 +217,6 @@ func (m MyDB) Rows(q string, pars []interface{}) (ret [][]interface{}, err error
 		}
 		ret = append(ret, subret)
 	}
-	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	return ret, nil
 }
@@ -235,6 +235,7 @@ func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	columns, _ := rows.Columns()
 	count := len(columns)
@@ -266,7 +267,6 @@ func (m MyDB) Hashes(q string, pars []interface{}) (ret []map[string]interface{}
 		}
 		ret = append(ret, subret)
 	}
-	rows.Close() // !!!!!!!!!!!!!!!!!!! Это очень важно !!!!!!!!!!!!!!!!!!
 
 	return ret, nil
 
@@ -280,9 +280,9 @@ func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error) {
 
 	if m.IsTxOpen() != true {
 		return -1, errors.New("Tx is not open")
-	} else {
-		tx_id, _ := m.Row0("select txid_current()", []interface{}{})
-		fmt.Printf("TX in DO=%d\n", tx_id)
+		// } else {
+		// 	tx_id, _ := m.Row0("select txid_current()", []interface{}{})
+		// 	fmt.Printf("TX in DO=%d\n", tx_id)
 	}
 
 	pars = preparePars(pars)
@@ -310,25 +310,25 @@ func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error) {
 	} else {
 		new_id = 0
 		// тут мы оказываемся в случае НЕ INSERT
-		if strings.HasPrefix(strings.ToUpper(q), "DELETE") {
-			// для DELETE надо переделать запрос
-			tbl := ""
-			var qq []string
-			ww := strings.Fields(q)
-			for i, w := range ww {
-				if strings.ToUpper(w) == "FROM" {
-					if strings.ToUpper(ww[i+1]) == "ONLY" || ww[i+1] == "*" {
-						tbl = ww[i+2]
-						qq = ww[i+3 : len(ww)]
-					} else {
-						tbl = ww[i+1]
-						qq = ww[i+2 : len(ww)]
-					}
-					break
-				}
-			}
-			q = fmt.Sprintf("update %s set del=1 %s", tbl, strings.Join(qq, " "))
-		} // DELETE
+		// if strings.HasPrefix(strings.ToUpper(q), "DELETE") {
+		// 	// для DELETE надо переделать запрос
+		// 	tbl := ""
+		// 	var qq []string
+		// 	ww := strings.Fields(q)
+		// 	for i, w := range ww {
+		// 		if strings.ToUpper(w) == "FROM" {
+		// 			if strings.ToUpper(ww[i+1]) == "ONLY" || ww[i+1] == "*" {
+		// 				tbl = ww[i+2]
+		// 				qq = ww[i+3 : len(ww)]
+		// 			} else {
+		// 				tbl = ww[i+1]
+		// 				qq = ww[i+2 : len(ww)]
+		// 			}
+		// 			break
+		// 		}
+		// 	}
+		// 	q = fmt.Sprintf("update %s set del=1 %s", tbl, strings.Join(qq, " "))
+		// } // DELETE
 
 		stmt, err := m.TX.Prepare(q)
 		if err != nil {
@@ -344,6 +344,7 @@ func (m *MyDB) Do(q string, pars []interface{}, needId bool) (int64, error) {
 				return -1, err
 			}
 		}
+		stmt.Close()
 
 	}
 

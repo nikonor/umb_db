@@ -73,7 +73,7 @@ func TestTwo(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error on BeginTx: %s\n", err)
 	}
-	// defer mdb.Rollback()
+	defer mdb.Rollback()
 
 	sel := "select name from test where id=$1"
 	got, err := mdb.Row0(sel, []interface{}{0})
@@ -114,43 +114,49 @@ func TestDo(t *testing.T) {
 	var err error
 	conf := readConf("")
 	mdb, err := BeginDB(map[string]string{"HOST": conf["HOST"], "DBNAME": conf["DBNAME"], "DBUSER": conf["DBUSER"], "DBPASSWD": conf["DBPASSWD"], "PORT": conf["PORT"]})
+	if err != nil {
+		t.Errorf("Error on TestDo::BeginDB::%s", err)
+	}
 	defer mdb.CloseDB()
-
-	// new_id, err := mdb.Row0("select nextval('s_test')",[]interface{}{})
-	// if err != nil {
-	// 	t.Errorf("Error on TestDo::nextval")
-	// }
-	// fmt.Printf("new_id=%d\n",new_id);
 
 	err = mdb.BeginTx()
 	if err != nil {
 		t.Errorf("Error on TestDo::BeginTx. %s\n", err)
 	}
-	// defer mdb.Rollback()
 
 	_, err = mdb.Do("insert into test (id,name) values($1,$2)", []interface{}{5, "six"}, false)
 	if err != nil {
-		// mdb.Rollback();
 		t.Errorf("Error on TestDo::Do. %s\n", err)
 	}
-	// mdb.Commit();
 
-	fmt.Printf("IsTxOpen=%b!\n", mdb.IsTxOpen())
+	mdb.Commit()
+	err = mdb.BeginTx()
+	if err != nil {
+		t.Errorf("Error on TestDo::BeginTx. %s\n", err)
+	}
+
 	sel := "select name from test where id=$1"
 	got, err := mdb.Row0(sel, []interface{}{5})
 	fmt.Printf("1::Row0=%s\n", got)
-	if got != "six" || err != nil {
-		t.Errorf("Error on TestDo::Row0: %s\n\tgot=%s\n", err, got)
+	if got == nil || got != "six" || err != nil {
+		t.Errorf("Error on TestDo::Row0: %s\n\tgot=!%#v!\n", err, got)
 	}
 
 	sel = "select name from test where id>=$1 and id<=5 order by id"
 	got2, err2 := mdb.Hashes(sel, []interface{}{4})
-	fmt.Printf("2::Row0=%s\n", got2[1]["name"])
-	if got2[1]["name"] != "six" || err2 != nil {
+	fmt.Printf("2:%#v\n", got2)
+	if got2 == nil || got2[1]["name"] != "six" || err2 != nil {
 		t.Errorf("Error on TestDo::Row0: %s\n\tgot2=%s\n", err2, got2)
+	} else {
+		fmt.Printf("2::Row0=%s\n", got2[1]["name"])
 	}
 
-	mdb.Rollback()
+	_, err = mdb.Do("delete from test where id=$1", []interface{}{5}, false)
+	if err != nil {
+		t.Errorf("Error on TestDo::Do::2. %s\n", err)
+	}
+
+	mdb.Commit()
 }
 
 // читаем конфиг. По умолчанию default_filename
